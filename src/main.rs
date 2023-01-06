@@ -1,40 +1,57 @@
+use clap::{Parser, ValueEnum};
 use url::Url;
-use clap::Parser;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
-struct Args {
-    url: Option<String>,
-    part: Option<String>,
+struct Cli {
+    url: String,
+
+    #[arg(value_enum)]
+    part: Option<Part>,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum Part {
+    Scheme,
+    Username,
+    Password,
+    Host,
+    Port,
+    Path,
+    Query,
+    Fragment,
 }
 
 fn main() {
-    let args = Args::parse();
+    let args = Cli::parse();
 
-    if let Some(url) = args.url.as_deref() {
-        if let Ok(parsed_url) = Url::parse(url) {
-            if let Some(part) = args.part.as_deref() {
-                let r = match part {
-                    "scheme" => parsed_url.scheme().to_string(),
-                    "host" => parsed_url.host_str().unwrap().to_string(),
-                    "port" => parsed_url.port().unwrap().to_string(),
-                    "path" => parsed_url.path().to_string(),
-                    "fragment" => parsed_url.fragment().unwrap().to_string(),
-                    _ => "Err: Invalid part".to_string(),
+    match Url::parse(args.url.as_str()) {
+        Ok(parsed_url) => {
+            if let Some(part) = args.part {
+                match part {
+                    Part::Scheme => println!("{}", parsed_url.scheme()),
+                    Part::Username => println!("{}", parsed_url.username()),
+                    Part::Password => println!("{}", parsed_url.password().unwrap_or_default()),
+                    Part::Host => println!("{}", parsed_url.host_str().unwrap()),
+                    Part::Port => println!("{}", parsed_url.port_or_known_default().unwrap_or_default()),
+                    Part::Path => println!("{}", parsed_url.path()),
+                    Part::Query => println!("{}", parsed_url.query().unwrap_or_default()),
+                    Part::Fragment => println!("{}", parsed_url.fragment().unwrap()),
                 };
-                println!("{}", r);
             } else {
                 // print all the parts
                 println!("scheme: {}", parsed_url.scheme());
-                println!("host: {}", parsed_url.host_str().unwrap());
-                println!("port: {}", parsed_url.port().unwrap());
+                println!("username: {}", parsed_url.username());
+                println!("password: {}", parsed_url.password().unwrap_or_default());
+                println!("host: {}", parsed_url.host_str().unwrap_or_default());
+                println!("port: {}", parsed_url.port_or_known_default().unwrap_or_default());
                 println!("path: {}", parsed_url.path());
-                println!("fragment: {}", parsed_url.fragment().unwrap());
+                println!("query: {}", parsed_url.query().unwrap_or_default());
+                println!("fragment: {}", parsed_url.fragment().unwrap_or_default());
             }
-        } else {
-            println!("Err: Invalid URL");
         }
-    } else {
-        println!("Err: No URL provided");
+        Err(e) => {
+            println!("Err: {}", e);
+        }
     }
 }
